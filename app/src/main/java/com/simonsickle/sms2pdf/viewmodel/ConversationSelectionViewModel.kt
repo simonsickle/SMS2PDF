@@ -14,18 +14,21 @@ class ConversationSelectionViewModel(application: Application) : ViewModel() {
     val conversationsLiveData: LiveData<List<Conversations>> = conversationsData
 
     init {
-        //TODO: Go get conversations!
         getConversations()
     }
 
     private fun getConversations() {
         val conversations = mutableListOf<Conversations>()
-        val mms =
-            contentResolver.query(Telephony.Threads.CONTENT_URI, null, null, null, null)
-        mms?.use {
-            mms.moveToPosition(-1)
-            while (mms.moveToNext()) {
-                conversations.add(Conversations.fromCursor(mms))
+        val cursor = contentResolver.query(Telephony.Threads.CONTENT_URI,
+        arrayOf(Telephony.Sms.Conversations.THREAD_ID, Telephony.TextBasedSmsColumns.ADDRESS),
+        null,
+        null,
+        null)
+
+        cursor?.use {
+            cursor.moveToPosition(-1)
+            while (cursor.moveToNext()) {
+                conversations.add(Conversations.fromCursor(cursor))
             }
         }
 

@@ -1,135 +1,74 @@
-/*
- * Created on 11/15/17.
- * Written by Islam Salah with assistance from members of Blink22.com
- */
-
 package android.print;
 
 import android.content.Context;
-import android.os.Build;
-import android.os.Handler;
+import android.os.CancellationSignal;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 
 import java.io.File;
 
-/**
- * Converts HTML to PDF.
- * <p>
- * Can convert only one task at a time, any requests to do more conversions before
- * ending the current task are ignored.
- */
-public class PdfConverter implements Runnable {
+public class PdfConverter {
 
-    private static final String TAG = "PdfConverter";
-    private static PdfConverter sInstance;
+    private static final String TAG = PdfConverter.class.getSimpleName();
+    private static final int DP_VALUE = 300;
 
-    private Context mContext;
-    private String mHtmlString;
-    private File mPdfFile;
-    private ParcelFileDescriptor mPdfDesc;
-    private PrintAttributes mPdfPrintAttrs;
-    private boolean mIsCurrentlyConverting;
-    private WebView mWebView;
 
-    private PdfConverter() {
-    }
-
-    public static synchronized PdfConverter getInstance() {
-        if (sInstance == null)
-            sInstance = new PdfConverter();
-
-        return sInstance;
-    }
-
-    @Override
-    public void run() {
-        mWebView = new WebView(mContext);
-        mWebView.setWebViewClient(new WebViewClient() {
+    public void print(final PrintDocumentAdapter printAdapter, final File path, final String fileName, final CallbackPrint callback) {
+        printAdapter.onLayout(null, getDefaultPrintAttrs(), null, new PrintDocumentAdapter.LayoutResultCallback() {
             @Override
-            public void onPageFinished(WebView view, String url) {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT)
-                    throw new RuntimeException("call requires API level 19");
-                else {
-                    PrintDocumentAdapter documentAdapter = mWebView.createPrintDocumentAdapter();
-                    documentAdapter.onLayout(null, getPdfPrintAttrs(), null, new PrintDocumentAdapter.LayoutResultCallback() {
-                    }, null);
-                    documentAdapter.onWrite(new PageRange[]{PageRange.ALL_PAGES}, getOutputFileDescriptor(), null, new PrintDocumentAdapter.WriteResultCallback() {
-                        @Override
-                        public void onWriteFinished(PageRange[] pages) {
-                            destroy();
+            public void onLayoutFinished(PrintDocumentInfo info, boolean changed) {
+                printAdapter.onWrite(new PageRange[]{PageRange.ALL_PAGES}, getOutputFile(path, fileName), new CancellationSignal(), new PrintDocumentAdapter.WriteResultCallback() {
+
+                    @Override
+                    public void onWriteFinished(PageRange[] pages) {
+                        super.onWriteFinished(pages);
+                        if (pages.length > 0) {
+                            File file = new File(path, fileName);
+                            callback.success(file);
+                        } else {
+                            callback.onFailure();
                         }
-                    });
-                }
+
+                    }
+                });
             }
-        });
-        mWebView.loadData(mHtmlString, "text/HTML", "UTF-8");
+        }, null);
+
     }
 
-    public PrintAttributes getPdfPrintAttrs() {
-        return mPdfPrintAttrs != null ? mPdfPrintAttrs : getDefaultPrintAttrs();
-    }
 
-    public void setPdfPrintAttrs(PrintAttributes printAttrs) {
-        this.mPdfPrintAttrs = printAttrs;
-    }
-
-    public void convert(Context context, String htmlString, ParcelFileDescriptor file) {
-        if (context == null)
-            throw new IllegalArgumentException("context can't be null");
-        if (htmlString == null)
-            throw new IllegalArgumentException("htmlString can't be null");
-        if (file == null)
-            throw new IllegalArgumentException("file can't be null");
-
-        if (mIsCurrentlyConverting)
-            return;
-
-        mContext = context;
-        mHtmlString = htmlString;
-        mPdfDesc = file;
-        mIsCurrentlyConverting = true;
-        runOnUiThread(this);
-    }
-
-    private ParcelFileDescriptor getOutputFileDescriptor() {
-        if (mPdfDesc != null) {
-            return mPdfDesc;
+    private ParcelFileDescriptor getOutputFile(File path, String fileName) {
+        File file1 = new File(path, fileName);
+        if (file1.exists()) {
+            file1.delete();
+            path.delete();
         }
+        if (!path.exists()) {
+            path.mkdirs();
+        }
+        File file = new File(path, fileName);
         try {
-            mPdfFile.createNewFile();
-            return ParcelFileDescriptor.open(mPdfFile, ParcelFileDescriptor.MODE_TRUNCATE | ParcelFileDescriptor.MODE_READ_WRITE);
+            file.createNewFile();
+            return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_WRITE);
         } catch (Exception e) {
-            Log.d(TAG, "Failed to open ParcelFileDescriptor", e);
+            Log.e(TAG, "Failed to open ParcelFileDescriptor", e);
         }
         return null;
     }
 
     private PrintAttributes getDefaultPrintAttrs() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) return null;
 
         return new PrintAttributes.Builder()
                 .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
-                .setResolution(new PrintAttributes.Resolution("RESOLUTION_ID", "RESOLUTION_ID", 300, 300))
-                .setMinMargins(new PrintAttributes.Margins(16, 16, 16, 16))
+                .setResolution(new PrintAttributes.Resolution("id", Context.PRINT_SERVICE, DP_VALUE, DP_VALUE))
+                .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
                 .build();
 
     }
 
-    private void runOnUiThread(Runnable runnable) {
-        Handler handler = new Handler(mContext.getMainLooper());
-        handler.post(runnable);
-    }
+    public interface CallbackPrint {
+        void success(File file);
 
-    private void destroy() {
-        mContext = null;
-        mHtmlString = null;
-        mPdfFile = null;
-        mPdfPrintAttrs = null;
-        mIsCurrentlyConverting = false;
-        mWebView = null;
-        mPdfDesc = null;
+        void onFailure();
     }
 }

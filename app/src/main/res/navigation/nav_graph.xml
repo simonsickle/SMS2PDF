@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/conversationSelectionFragment">
+    app:startDestination="@id/permissionRequestFragment">
 
     <fragment
         android:id="@+id/conversationSelectionFragment"
@@ -23,5 +23,15 @@
         <argument
             android:name="threadId"
             app:argType="integer" />
+    </fragment>
+    <fragment
+        android:id="@+id/permissionRequestFragment"
+        android:name="com.simonsickle.sms2pdf.fragment.PermissionRequestFragment"
+        android:label="PermissionRequestFragment" >
+        <action
+            android:id="@+id/goToList"
+            app:destination="@id/conversationSelectionFragment"
+            app:enterAnim="@anim/fragment_fade_enter"
+            app:exitAnim="@anim/fragment_fade_exit" />
     </fragment>
 </navigation>

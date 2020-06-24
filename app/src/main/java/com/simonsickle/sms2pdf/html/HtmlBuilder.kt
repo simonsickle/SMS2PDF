@@ -1,5 +1,6 @@
 package com.simonsickle.sms2pdf.html
 
+import com.simonsickle.sms2pdf.models.SmsFolder
 import com.simonsickle.sms2pdf.models.SmsModel
 import kotlinx.html.*
 import kotlinx.html.stream.createHTML
@@ -28,7 +29,11 @@ fun getHtmlForConversation(messages: List<SmsModel>): String {
             ol {
                 messages.forEach { message ->
                     li(message.folderName.type) {
-                        p("sender") { +message.address }
+                        p("sender") {
+                            if (message.folderName == SmsFolder.INBOX) {
+                                +message.address
+                            }
+                        }
                         div("message") {
                             p { +message.message }
                         }

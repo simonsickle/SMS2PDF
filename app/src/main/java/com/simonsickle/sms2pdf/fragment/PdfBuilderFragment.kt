@@ -1,12 +1,11 @@
 package com.simonsickle.sms2pdf.fragment
 
-import android.content.ContentValues
-import android.net.Uri
+import android.content.Intent
 import android.os.Bundle
-import android.os.Environment
 import android.print.PdfConverter
-import android.provider.MediaStore
 import android.view.View
+import android.widget.Toast
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
@@ -17,7 +16,6 @@ import com.simonsickle.sms2pdf.R
 import com.simonsickle.sms2pdf.databinding.PdfBuilderFragmentBinding
 import com.simonsickle.sms2pdf.viewmodel.PdfBuilderViewModel
 import java.io.File
-import java.io.FileInputStream
 
 
 class PdfBuilderFragment : Fragment(R.layout.pdf_builder_fragment) {
@@ -40,22 +38,34 @@ class PdfBuilderFragment : Fragment(R.layout.pdf_builder_fragment) {
         })
         viewModel.getCursorForConversation(args.threadId)
         binding.btnCreatePdf.setOnClickListener {
-            val contentValues = ContentValues()
-            contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, "text-backup.pdf")
-            contentValues.put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
-            contentValues.put(
-                MediaStore.MediaColumns.RELATIVE_PATH,
-                Environment.DIRECTORY_DOWNLOADS
-            )
-            val imageUri: Uri? =
-                requireActivity().contentResolver.insert(
-                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                    contentValues
-                )
-            val outputStream = requireActivity().contentResolver.openFileDescriptor(imageUri!!, "rw")
-            // TODO not quite right
-            PdfConverter.getInstance()
-                .convert(context, viewModel.messageHtmlLiveData.value!!, outputStream)
+            val converter = PdfConverter()
+            val path = requireContext().getExternalFilesDir(null)
+
+            converter.print(
+                binding.webView.createPrintDocumentAdapter("backup.pdf"),
+                path,
+                "backup+${args.threadId}.pdf",
+                object : PdfConverter.CallbackPrint {
+                    override fun onFailure() {
+                        Toast.makeText(
+                            context,
+                            "well this failed, time to fix it",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+
+                    override fun success(file: File) {
+                        val uri = FileProvider.getUriForFile(
+                            requireContext(),
+                            "com.simonsickle.sms2pdf.pdfProvider", file
+                        )
+                        val share = Intent()
+                        share.action = Intent.ACTION_SEND
+                        share.type = "application/pdf"
+                        share.putExtra(Intent.EXTRA_STREAM, uri)
+                        requireContext().startActivity(Intent.createChooser(share, "Share"))
+                    }
+                })
         }
 
     }

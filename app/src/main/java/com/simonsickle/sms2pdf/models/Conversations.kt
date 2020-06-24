@@ -10,7 +10,7 @@ data class Conversations(
     companion object {
         fun fromCursor(cursor: Cursor): Conversations{
             return Conversations(
-                threadID = cursor.getInt(cursor.getColumnIndex(Telephony.Sms.Conversations.THREAD_ID)),
+                threadID = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.Conversations.THREAD_ID)),
                 address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.TextBasedSmsColumns.ADDRESS))
             )
         }
