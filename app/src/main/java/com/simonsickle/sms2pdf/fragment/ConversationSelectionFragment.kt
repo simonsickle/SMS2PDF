@@ -8,6 +8,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.simonsickle.sms2pdf.R
 import com.simonsickle.sms2pdf.databinding.ConversationFragmentBinding
@@ -34,6 +35,7 @@ class ConversationSelectionFragment : Fragment(R.layout.conversation_fragment) {
         binding.conversationRecycler.apply {
             adapter = conversationAdapter
             layoutManager = LinearLayoutManager(context)
+            addItemDecoration(DividerItemDecoration(context, DividerItemDecoration.VERTICAL))
         }
 
         viewModel.conversationsLiveData.observe(viewLifecycleOwner, Observer { conversations ->
